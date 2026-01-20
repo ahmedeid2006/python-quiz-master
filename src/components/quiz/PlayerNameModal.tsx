@@ -1,15 +1,27 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { User, AlertCircle } from "lucide-react";
+import { User, AlertCircle, RefreshCw } from "lucide-react";
+import { usePlayerNameStorage } from "@/hooks/useDeviceFingerprint";
 
 interface PlayerNameModalProps {
   onSubmit: (name: string) => void;
 }
 
 const PlayerNameModal: React.FC<PlayerNameModalProps> = ({ onSubmit }) => {
+  const { getSavedName, saveName } = usePlayerNameStorage();
   const [name, setName] = useState("");
   const [error, setError] = useState("");
+  const [hasSavedName, setHasSavedName] = useState(false);
+
+  // تحقق من وجود اسم محفوظ
+  useEffect(() => {
+    const savedName = getSavedName();
+    if (savedName) {
+      setName(savedName);
+      setHasSavedName(true);
+    }
+  }, [getSavedName]);
 
   const validateFullName = (fullName: string): boolean => {
     const parts = fullName.trim().split(/\s+/);
@@ -30,7 +42,14 @@ const PlayerNameModal: React.FC<PlayerNameModalProps> = ({ onSubmit }) => {
     }
     
     setError("");
+    // حفظ الاسم للمرات القادمة
+    saveName(name.trim());
     onSubmit(name.trim());
+  };
+
+  const handleChangeName = () => {
+    setName("");
+    setHasSavedName(false);
   };
 
   return (
@@ -40,9 +59,14 @@ const PlayerNameModal: React.FC<PlayerNameModalProps> = ({ onSubmit }) => {
           <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
             <User className="w-8 h-8 text-primary" />
           </div>
-          <h2 className="text-2xl font-bold text-foreground">مرحباً بك!</h2>
+          <h2 className="text-2xl font-bold text-foreground">
+            {hasSavedName ? "مرحباً بعودتك!" : "مرحباً بك!"}
+          </h2>
           <p className="text-muted-foreground mt-2 text-center">
-            أدخل اسمك الثلاثي للبدء في الاختبار والظهور في لوحة المتصدرين
+            {hasSavedName 
+              ? "وجدنا اسمك المحفوظ. اضغط للاستمرار أو غيّر الاسم."
+              : "أدخل اسمك الثلاثي للبدء في الاختبار والظهور في لوحة المتصدرين"
+            }
           </p>
         </div>
 
@@ -57,7 +81,8 @@ const PlayerNameModal: React.FC<PlayerNameModalProps> = ({ onSubmit }) => {
                 setError("");
               }}
               className="text-right text-lg py-6"
-              autoFocus
+              autoFocus={!hasSavedName}
+              disabled={hasSavedName}
             />
             {error && (
               <div className="flex items-center gap-2 mt-2 text-destructive text-sm">
@@ -66,16 +91,36 @@ const PlayerNameModal: React.FC<PlayerNameModalProps> = ({ onSubmit }) => {
               </div>
             )}
           </div>
-          <p className="text-xs text-muted-foreground text-center">
-            مثال: أحمد محمد علي
-          </p>
+          
+          {!hasSavedName && (
+            <p className="text-xs text-muted-foreground text-center">
+              مثال: أحمد محمد علي
+            </p>
+          )}
+
+          {hasSavedName && (
+            <Button 
+              type="button"
+              variant="outline"
+              onClick={handleChangeName}
+              className="w-full py-4 text-sm"
+            >
+              <RefreshCw className="w-4 h-4 ml-2" />
+              تغيير الاسم
+            </Button>
+          )}
+
           <Button 
             type="submit" 
             className="w-full py-6 text-lg"
           >
-            ابدأ الاختبار
+            {hasSavedName ? "استمر بهذا الاسم" : "ابدأ الاختبار"}
           </Button>
         </form>
+
+        <p className="text-xs text-muted-foreground text-center mt-4">
+          ⚠️ الاسم سيظهر في لوحة المتصدرين العامة
+        </p>
       </div>
     </div>
   );

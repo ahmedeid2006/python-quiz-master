@@ -2,11 +2,13 @@ import React, { useEffect, useState } from "react";
 import { Trophy, RefreshCcw, Star, Target, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import Leaderboard from "./Leaderboard";
+import { useDeviceFingerprint, generateSessionId } from "@/hooks/useDeviceFingerprint";
 
 interface QuizResultsProps {
   totalQuestions: number;
   correctAnswers: number;
   playerName: string;
+  quizDuration?: number; // مدة الاختبار بالثواني
   onRestart: () => void;
 }
 
@@ -14,11 +16,14 @@ const QuizResults: React.FC<QuizResultsProps> = ({
   totalQuestions,
   correctAnswers,
   playerName,
+  quizDuration = 0,
   onRestart,
 }) => {
   const [saving, setSaving] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const percentage = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
+  const deviceFingerprint = useDeviceFingerprint();
   
   useEffect(() => {
     const saveScore = async () => {
@@ -26,24 +31,42 @@ const QuizResults: React.FC<QuizResultsProps> = ({
         setSaving(false);
         return;
       }
+
+      // انتظار حتى يتم توليد بصمة الجهاز
+      if (!deviceFingerprint) {
+        return;
+      }
       
       try {
-        await supabase.from("quiz_scores").insert({
+        // توليد hash للـ IP (في الواقع سيتم استخدام IP من الخادم)
+        const sessionId = generateSessionId();
+        
+        const { error } = await supabase.from("quiz_scores").insert({
           player_name: playerName,
           score: correctAnswers,
           total_questions: totalQuestions,
           percentage: percentage,
+          device_fingerprint: deviceFingerprint,
+          session_id: sessionId,
+          quiz_duration_seconds: quizDuration,
         });
-        setSaved(true);
+
+        if (error) {
+          console.error("Error saving score:", error);
+          setSaveError("فشل حفظ النتيجة. قد تكون حاولت كثيراً أو هناك مشكلة في البيانات.");
+        } else {
+          setSaved(true);
+        }
       } catch (error) {
         console.error("Error saving score:", error);
+        setSaveError("حدث خطأ أثناء حفظ النتيجة");
       } finally {
         setSaving(false);
       }
     };
 
     saveScore();
-  }, [playerName, correctAnswers, totalQuestions, percentage, saved]);
+  }, [playerName, correctAnswers, totalQuestions, percentage, saved, deviceFingerprint, quizDuration]);
 
   const getMessage = () => {
     if (percentage >= 90) return { text: "ممتاز! أداء رائع! 🎉", color: "text-success" };
@@ -123,6 +146,13 @@ const QuizResults: React.FC<QuizResultsProps> = ({
         <div className="flex items-center justify-center gap-2 text-muted-foreground mb-4">
           <Loader2 className="w-4 h-4 animate-spin" />
           <span>جاري حفظ النتيجة...</span>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {saveError && (
+        <div className="bg-destructive/10 text-destructive px-4 py-2 rounded-lg mb-4 text-sm">
+          {saveError}
         </div>
       )}
 

@@ -17,27 +17,42 @@ export type Database = {
       quiz_scores: {
         Row: {
           created_at: string
+          device_fingerprint: string | null
           id: string
+          ip_hash: string | null
           percentage: number
           player_name: string
+          quiz_duration_seconds: number | null
           score: number
+          session_id: string | null
           total_questions: number
+          verified: boolean | null
         }
         Insert: {
           created_at?: string
+          device_fingerprint?: string | null
           id?: string
+          ip_hash?: string | null
           percentage?: number
           player_name: string
+          quiz_duration_seconds?: number | null
           score?: number
+          session_id?: string | null
           total_questions?: number
+          verified?: boolean | null
         }
         Update: {
           created_at?: string
+          device_fingerprint?: string | null
           id?: string
+          ip_hash?: string | null
           percentage?: number
           player_name?: string
+          quiz_duration_seconds?: number | null
           score?: number
+          session_id?: string | null
           total_questions?: number
+          verified?: boolean | null
         }
         Relationships: []
       }
@@ -46,7 +61,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      check_rate_limit: {
+        Args: { p_device_fingerprint: string; p_ip_hash: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
